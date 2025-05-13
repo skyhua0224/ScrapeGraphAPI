@@ -1,0 +1,36 @@
+# Git files
+.git
+.gitignore
+
+# Docker files
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Python cache and virtual environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Environment variables file (sensitive)
+.env
+
+# Documentation and planning files
+PLAN.md
+*.md
+
+# Original script and data file (if no longer needed inside container)
+main.py
+学号_姓名_获奖.csv
+
+# IDE and OS specific files
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store

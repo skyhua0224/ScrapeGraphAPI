@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+scrapegraphai
+python-dotenv
+google-generativeai
+ollama
+# 可能需要的底层依赖，如果遇到 ModuleNotFoundError 再添加
+# beautifulsoup4
+# lxml

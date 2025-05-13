@@ -1,0 +1,46 @@
+version: '3.8' # 使用较新的 Compose 文件版本
+
+services:
+  ollama:
+    image: docker.1ms.run/ollama/ollama:latest # 使用官方 Ollama 镜像
+    container_name: ollama_service
+    volumes:
+      - ollama_data:/root/.ollama # 挂载命名卷以持久化模型
+    ports:
+      - "11434:11434" # 将 Ollama 端口映射到宿主机，方便调试或直接访问
+    restart: unless-stopped
+    # 可选：添加健康检查确保 Ollama 服务启动完成
+    # healthcheck:
+    #   test: ["CMD", "ollama", "list"]
+    #   interval: 10s
+    #   timeout: 5s
+    #   retries: 5
+    # 可选：如果宿主机有 NVIDIA GPU 并安装了 NVIDIA Container Toolkit，取消注释以下部分以启用 GPU
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1 # 或者 'all'
+    #           capabilities: [gpu]
+
+  app:
+    build: . # 从当前目录的 Dockerfile 构建镜像
+    container_name: fastapi_scraper_app
+    depends_on:
+      ollama: # 确保 Ollama 服务先启动 (如果添加了 healthcheck，可以设置为 service_healthy)
+        # condition: service_started # 或者 service_healthy (如果 ollama 有 healthcheck)
+        condition: service_started # 简单起见，先用 started
+    ports:
+      - "8000:8000" # 将 FastAPI 应用的端口映射到宿主机
+    volumes:
+      - .:/app # 将当前目录挂载到容器的 /app，方便开发时代码热更新 (配合 uvicorn reload)
+    # 从 .env 文件加载环境变量。
+    # 警告：这种方式会将包括 API 密钥在内的所有变量直接加载到容器环境。
+    # 在生产环境中，建议使用更安全的方式管理密钥，例如 Docker Secrets 或运行时注入。
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  ollama_data: # 定义命名卷，用于持久化 Ollama 模型数据

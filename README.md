@@ -7,7 +7,7 @@
 - **基于 API 的抓取**: 通过简单的 POST 请求即可触发网页抓取任务。
 - **自定义提取逻辑**: 用户可以通过提供 Prompt 来精确指导信息提取过程。
 - **灵活的 LLM 支持**: 支持配置使用不同的 LLM 提供商 (当前支持 Gemini 和 DeepSeek)。
-- **灵活的 Embedding 支持**: 支持配置使用不同的 Embedding 提供商 (当前支持 Google Gemini 和本地 Ollama)。
+- **灵活的 Embedding 支持**: 支持配置使用不同的 Embedding 提供商 (具体支持请参阅ScrapeGraphAI库，默认支持Gemini和Deepseek)。
 - **容器化部署**: 使用 Docker 和 Docker Compose 轻松部署和管理服务。
 - **异步处理**: API 使用 FastAPI 的异步特性和线程池来处理抓取请求，避免阻塞。
 
@@ -33,7 +33,7 @@
     ```
 
 2.  **创建并配置 `.env` 文件**:
-    复制或重命名项目根目录下的 `.env.example` (如果存在) 为 `.env`，或者手动创建 `.env` 文件。根据您的需求填入以下环境变量：
+    复制或重命名项目根目录下的 `.env.template`为 `.env`，或者手动创建 `.env` 文件。根据您的需求填入以下环境变量：
 
     ```dotenv
     # --- LLM Configuration ---
@@ -152,15 +152,12 @@
 
 对于生产环境或稳定部署：
 
-1.  确保已配置好 `.env` 文件，包含生产环境所需的 API 密钥和设置。**强烈建议不要将包含敏感密钥的 `.env` 文件直接提交到版本控制系统。** 考虑使用 Docker Secrets 或其他安全的密钥管理方式。
+1.  确保已配置好 `.env` 文件，包含生产环境所需的 API 密钥和设置。
 2.  构建并启动服务:
 
     ```bash
-    docker-compose up --build -d
+    docker compose up --build -d
     ```
-
-    - 移除 `--build` 如果镜像没有变化。
-    - `-d` 使容器在后台运行。
 
 3.  查看日志:
 
@@ -175,9 +172,3 @@
     ```
     - 添加 `-v` 选项 (`docker-compose down -v`) 可以同时删除 `ollama_data` 卷，这将清除已下载的 Ollama 模型。
 
-## 注意事项
-
-- **API 密钥管理**: `.env` 文件方便本地开发，但在生产环境中请使用更安全的方式管理 API 密钥。
-- **Ollama 模型**: 如果使用 Ollama，确保在启动容器前或启动后，通过 Ollama CLI 或 API 拉取所需的 Embedding 模型。
-- **资源消耗**: 运行 LLM 和 Web Scraping 可能需要较多计算资源 (CPU, RAM)。根据需要调整 Docker 资源限制。
-- **错误处理**: API 和 Scraper 包含基本的错误处理，但可以根据具体需求进行扩展。

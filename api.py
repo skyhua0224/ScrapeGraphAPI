@@ -1,7 +1,7 @@
 import os
 import uvicorn
 from fastapi import FastAPI, HTTPException, Body
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, HttpUrl, Field, model_validator
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
@@ -47,8 +47,46 @@ app = FastAPI(
 # --- Pydantic 模型定义 ---
 
 class ScrapeRequest(BaseModel):
-    urls: List[HttpUrl] = Field(..., description="需要抓取的 URL 列表")
+    urls_input: str = Field(..., alias="urls", description="需要抓取的 URL 列表，每行一个 URL")
     prompt: str = Field(..., description="指导信息提取的 Prompt (必需)") # 移除默认值，使其成为必需字段
+    parsed_urls: List[HttpUrl] = Field(default_factory=list, exclude=True) # 用于存储解析后的URL
+
+    @model_validator(mode='after')
+    def parse_urls_from_input(self) -> 'ScrapeRequest':
+        if isinstance(self.urls_input, str):
+            url_strings = self.urls_input.splitlines()
+            validated_urls = []
+            for i, url_str in enumerate(url_strings):
+                url_str = url_str.strip()
+                if not url_str: # 跳过空行
+                    continue
+                try:
+                    validated_urls.append(HttpUrl(url_str))
+                except ValueError as e:
+                    # 提供更详细的错误信息，指出是哪个URL以及具体错误
+                    raise ValueError(f"第 {i+1} 个 URL '{url_str}' 无效: {e}")
+            self.parsed_urls = validated_urls
+        elif isinstance(self.urls_input, list): # 兼容已经传递列表的情况 (虽然主要场景是字符串)
+            # 如果已经是 HttpUrl 列表，直接使用
+            if all(isinstance(u, HttpUrl) for u in self.urls_input):
+                self.parsed_urls = self.urls_input
+            else: # 如果是字符串列表，尝试转换
+                validated_urls = []
+                for i, url_str in enumerate(self.urls_input):
+                    url_str = str(url_str).strip()
+                    if not url_str:
+                        continue
+                    try:
+                        validated_urls.append(HttpUrl(url_str))
+                    except ValueError as e:
+                        raise ValueError(f"URL 列表中第 {i+1} 个 URL '{url_str}' 无效: {e}")
+                self.parsed_urls = validated_urls
+        else:
+            raise ValueError("urls 必须是字符串 (每行一个URL) 或有效的URL列表")
+
+        if not self.parsed_urls:
+            raise ValueError("至少需要提供一个有效的 URL。")
+        return self
 
 class ScrapeResponseItem(BaseModel):
     url: HttpUrl
@@ -119,10 +157,10 @@ async def run_scraping(request: ScrapeRequest = Body(...)):
         raise HTTPException(status_code=500, detail=f"Unsupported EMBEDDING_PROVIDER: {EMBEDDING_PROVIDER}")
 
     # 3. 遍历 URL 并执行抓取
-    for url in request.urls:
+    for url in request.parsed_urls: # 修改为使用解析后的 parsed_urls
         scrape_result = await scrape_url_async( # 使用异步包装器
             prompt=request.prompt,
-            source_url=str(url), # Pydantic v2 返回的是 Url 对象，需转为 str
+            source_url=str(url), # HttpUrl 对象需要转为 str
             llm_config=llm_config,
             embedding_config=embedding_config,
             verbose=SCRAPEGRAPHAI_VERBOSE,
